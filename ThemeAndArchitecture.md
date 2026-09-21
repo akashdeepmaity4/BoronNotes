@@ -1,4 +1,4 @@
-# INTRODUCTION TO FILE
+# WHAT IS THIS FILE
 
 This file is to be treated as the file truth about anything in this project.
 
