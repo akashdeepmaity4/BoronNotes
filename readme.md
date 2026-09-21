@@ -3,7 +3,7 @@
 ![Version](https://img.shields.io/badge/version-2.0-brightgreen)
 ![ParentProduct](https://img.shields.io/badge/aVeritasCodeProduct-darkblue)
 
-Veritas Notes is a stripped-down version of [Veritas Code](https://github.com/akashdeepnmaity4/veritascode) is an ultra-lightweight standard text editor which allows the user to create and edit any text-based file. It is fully local, keeping your files 100% safe inside your own local storage. Veritas Notes is also a Markdown note-taking application made to be a lite alternative to Obsidian.
+Veritas Notes is a stripped-down version of Veritas Code. It is an ultra-lightweight standard text editor which allows the user to create and edit any text-based file. It is fully local, keeping your files 100% safe inside your own local storage. Veritas Notes is also a Markdown note-taking application made to be a lite alternative to Obsidian.
 
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54) 
 ![Bash](https://img.shields.io/badge/Bash-1f425f?style=for-the-badge&logo=gnu-bash&logoColor=white)
@@ -14,7 +14,7 @@ Veritas Notes is a stripped-down version of [Veritas Code](https://github.com/ak
 
 1. Native dark mode and Industry-standard IDE inspired look.
 1. Minimal, snappy, reliable. Easy to get into even as a beginner.
-1. Fully locally ran. Your notes stay ON YOUR DEVICE ( [TermsandConditions](termsandconditions.md) apply ).
+1. Fully locally ran. Your notes stay ON YOUR DEVICE ( [terms and conditions](termsandconditions.md) apply ).
 
 ## MUST DO
 
