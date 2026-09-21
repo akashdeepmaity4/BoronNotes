@@ -8,9 +8,11 @@
 </head>
 <body>
 
-  <input type="file" id="filePicker" style="display: none;">
+  <input type="file" id="filePicker" style="display: none;"
+          accept=".txt,.md,.markdown,.csv,.json,.html,.htm,.png,.jpg,.jpeg,.pdf,.doc,.docx,.gdoc">
   <input type="file" id="folderPicker" webkitdirectory directory style="display: none;">
-  <input type="file" id="native-file-picker" style="display: none;">
+  <input type="file" id="native-file-picker" style="display: none;"
+          accept=".txt,.md,.markdown,.csv,.json,.html,.htm,.png,.jpg,.jpeg,.pdf,.doc,.docx,.gdoc">
 
   <header class="app-header">
     <span class="app-title">Veritas Notes</span>
@@ -24,9 +26,9 @@
         <div class="dropdown-item" data-action="open-file">
           <span>Open...</span><span class="shortcut">Ctrl+O</span>
         </div>
-        
+
         <div class="dropdown-divider"></div>
-        
+
         <div class="dropdown-item" data-action="save">
           <span>Save</span><span class="shortcut">Ctrl+S</span>
         </div>
@@ -36,15 +38,15 @@
         <div class="dropdown-item" data-action="save-copy-as">
           <span>Save Copy As...</span><span class="shortcut">Alt+Shift+S</span>
         </div>
-        
+
         <div class="dropdown-divider"></div>
-        
+
         <div class="dropdown-item" data-action="print-window">
           <span>Print Window</span><span class="shortcut">Ctrl+P</span>
         </div>
-        
+
         <div class="dropdown-divider"></div>
-        
+
         <div class="dropdown-item" data-action="close-window">
           <span>Close Window</span><span class="shortcut">Alt+F4</span>
         </div>
@@ -64,9 +66,9 @@
         <div class="dropdown-item" data-action="redo">
           <span>Redo</span><span class="shortcut">Ctrl+Y</span>
         </div>
-        
+
         <div class="dropdown-divider"></div>
-        
+
         <div class="dropdown-item" data-action="cut">
           <span>Cut</span><span class="shortcut">Ctrl+X</span>
         </div>
@@ -76,9 +78,9 @@
         <div class="dropdown-item" data-action="paste">
           <span>Paste</span><span class="shortcut">Ctrl+V</span>
         </div>
-        
+
         <div class="dropdown-divider"></div>
-        
+
         <div class="dropdown-item" data-action="select-all">
           <span>Select All</span><span class="shortcut">Ctrl+A</span>
         </div>
@@ -92,9 +94,9 @@
         <div class="dropdown-item" data-action="toggle-theme">
           <span id="theme-status-text">Switch to Dark Mode</span>
         </div>
-        
+
         <div class="dropdown-divider"></div>
-        
+
         <div class="dropdown-item" data-action="toggle-line-numbers">
           <span id="lines-status-text">Hide Line Numbers</span>
         </div>
@@ -148,6 +150,27 @@
 
       <div class="editor-grid-container">
         <div class="text-canvas" contenteditable="true" id="textCanvas"></div>
+
+        <!-- Read-only viewers for assets (png/jpg) and documents (pdf/doc) -->
+        <div class="asset-viewer hidden" id="assetViewer">
+          <div class="viewer-badge" id="assetBadge">Read-only asset</div>
+          <img id="assetImage" alt="Asset preview">
+        </div>
+
+        <div class="doc-viewer hidden" id="docViewer">
+          <div class="viewer-badge" id="docBadge">View only — not editable</div>
+          <iframe id="docFrame" title="Document preview"></iframe>
+          <div class="doc-fallback" id="docFallback" hidden>
+            <p>This document type cannot be previewed inline.</p>
+            <a id="docDownloadLink" href="#" download>Open document (view only)</a>
+          </div>
+        </div>
+
+        <!-- Markdown preview (Ctrl+Shift+V toggles between this and raw text) -->
+        <div class="markdown-preview hidden" id="markdownPreview">
+          <div class="viewer-badge" id="markdownBadge">Markdown preview — Ctrl+Shift+V for raw text</div>
+          <div class="markdown-body" id="markdownBody"></div>
+        </div>
       </div>
     </main>
   </div>
