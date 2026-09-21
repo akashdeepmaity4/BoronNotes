@@ -15,7 +15,7 @@ Veritas Notes is a stripped-down version of Veritas Code. It is an ultra-lightwe
 
 1. Native dark mode and Industry-standard IDE inspired look.
 1. Minimal, snappy, reliable. Easy to get into even as a beginner.
-1. Fully locally ran. Your notes stay ON YOUR DEVICE ( [terms and conditions](termsandconditions.md) apply ).
+1. Fully locally ran. Your notes stay ON YOUR DEVICE ( [terms and conditions](TermsAndConditions.md) apply ).
 
 ## MUST DO
 
