@@ -4,6 +4,8 @@ import sys
 import json
 import html
 import base64
+import shutil
+import subprocess
 import mimetypes
 from flask import render_template as r
 from werkzeug.utils import secure_filename
@@ -329,6 +331,93 @@ def save_project():
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(to_markdown(content))
     return jsonify({'success': True, 'filename': filename})
+
+@app.route('/save-file', methods=['POST'])
+def save_file():
+    # Save editor content to a path relative to STORAGE_PATH.
+    # Mirrors /file-content's contract: takes {path, content} and replies with
+    # {status, message} so the front-end can handle both routes uniformly.
+    data = request.get_json() or {}
+    rel_path = data.get('path', '')
+    content = data.get('content', '')
+
+    if not rel_path:
+        return jsonify({'status': 'error', 'message': 'No path supplied'}), 400
+    abs_path = os.path.abspath(os.path.join(STORAGE_PATH, rel_path))
+    storage = os.path.abspath(STORAGE_PATH)
+    if os.path.commonpath([abs_path, storage]) != storage:
+        return jsonify({'status': 'error', 'message': 'Path escapes storage'}), 400
+    # Only plain / structured text files may be written back to disk.
+    filename = os.path.basename(abs_path)
+    if not is_editable(filename):
+        return jsonify({
+            'status': 'error',
+            'message': f'".{get_ext(filename)}" files cannot be saved. '
+                       'Allowed: .txt .md .csv .json .html'
+        }), 400
+    os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+    with open(abs_path, 'w', encoding='utf-8') as f:
+        f.write(content)
+    return jsonify({'status': 'success', 'name': filename})
+
+@app.route('/open-terminal', methods=['POST'])
+def open_terminal():
+    # Launch an interactive terminal at the storage directory.
+    # Preference order: bash on PATH -> Git Bash (default install paths)
+    # -> cmd.exe. The terminal inherits the app's own console, so if the app
+    # was started from an existing shell it opens in that window.
+    workdir = STORAGE_PATH if os.path.isdir(STORAGE_PATH) else os.getcwd()
+
+    candidates = []
+
+    # 1. Plain `bash` resolved through PATH.
+    bash = shutil.which('bash')
+    if bash:
+        candidates.append(('bash', bash, ['--login']))
+
+    # 2. Git Bash at its default install locations.
+    for rel in ('bin\\bash.exe', 'usr\\bin\\bash.exe'):
+        for root in (os.environ.get('ProgramFiles'),
+                     os.environ.get('ProgramFiles(x86)'),
+                     os.path.join(os.environ.get('LOCALAPPDATA', ''),
+                                  'Programs')):
+            if not root:
+                continue
+            path = os.path.join(root, 'Git', rel)
+            if os.path.isfile(path):
+                candidates.append(('git-bash', path, ['--login', '-i']))
+
+    # 3. cmd.exe - always present on Windows.
+    cmd = os.environ.get('ComSpec') or shutil.which('cmd')
+    if cmd:
+        candidates.append(('cmd', cmd, ['/K', f'cd /d "{workdir}"']))
+
+    if not candidates:
+        return jsonify({
+            'status': 'error',
+            'message': 'No terminal available (bash, Git Bash, or cmd).'
+        }), 500
+    shell, exe, args = candidates[0]
+    try:
+        if sys.platform == 'win32':
+            # CREATE_NEW_CONSOLE gives a detached window with its own stdin,
+            # which an interactive shell needs.
+            subprocess.Popen(
+                [exe, *args], cwd=workdir,
+                creationflags=subprocess.CREATE_NEW_CONSOLE)
+        else:
+            subprocess.Popen([exe, *args], cwd=workdir)
+    except OSError as err:
+        return jsonify({
+            'status': 'error',
+            'message': f'Failed to launch {shell}: {err}'
+        }), 500
+    return jsonify({
+        'status': 'success',
+        'message': f'Opened {shell} in {workdir}',
+        'shell': shell,
+        'path': workdir,
+    })
 
 @app.route('/get_storage_path', methods=['GET'])
 def get_storage_path():

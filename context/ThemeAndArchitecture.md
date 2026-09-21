@@ -114,3 +114,14 @@ This file is to be treated as the file truth about anything in this project.
 - Selection: `::selection` = white on `--veritas-green`.
 - Motion: short, subtle — `0.1s ease` for transforms, `0.2s ease` for the sidebar width.
 - `.hidden` is the universal visibility switch (`display: none !important`).
+
+### PowerShell / Shell Launch
+
+- `Ctrl + \`` launches a terminal at the current storage root (`STORAGE_PATH`).
+- Shell resolution is a three-step fallback, first match wins:
+  1. `bash` resolved through `PATH` → launched `--login`
+  2. **Git Bash** at default install roots (`%ProgramFiles%`, `%ProgramFiles(x86)%`, `%LOCALAPPDATA%\Programs`) under `Git\bin\bash.exe` or `Git\usr\bin\bash.exe` → launched `--login -i`
+  3. `cmd.exe` from `%ComSpec%` → launched with `/K cd /d "<storage root>"`
+- The terminal is spawned detached via `CREATE_NEW_CONSOLE` (Windows) so an interactive shell gets its own stdin.
+- Endpoint `POST /open-terminal` returns `{ status, message, shell, path }`; on failure `status` is `error` with a human-readable `message`. The front-end alerts on any non-`success` status.
+- No terminal available (no bash, no Git Bash, no cmd) → HTTP 500 with an explanatory message.

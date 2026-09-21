@@ -85,3 +85,34 @@ These aren't on the sidebar element itself but do affect it:
 if (btn.textContent.includes('➕') || btn.textContent.includes('+')) actionNewFile = btn;
 if (btn.textContent.includes('📁')) actionNewFolder = btn;
 ```
+
+## Terminal Launch — `Ctrl + \``
+
+### listener — static/js/main.js:
+
+```javascript
+// Ctrl + ` : Launch Terminal
+if (isCtrl && (e.key === '`' || e.code === 'Backquote')) {
+  e.preventDefault();
+  fetch('/open-terminal', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status !== 'success') alert(`Terminal Error: ${data.message}`);
+    })
+    .catch(err => console.error('Terminal execution error:', err));
+  return;
+}
+```
+
+- Matches on both `e.key === '\`'` and `e.code === 'Backquote'`, so it works regardless of keyboard layout or modifier state.
+- It is a plain `preventDefault()` + `fetch`, not a keydown-hold or toggle. There is no UI element for the terminal — the shortcut is the only entry point.
+- The response is checked as `data.status !== 'success'`, which is the `{status, message}` contract shared with `/save-file` and `/file-content` (see the sidebar note on route conventions).
+
+### Backend — app/app.py:
+
+- Route `POST /open-terminal`. Resolves a shell in three steps, first match wins: `bash` on `PATH`, then Git Bash at its default install roots, then `cmd.exe`.
+- The working directory is `STORAGE_PATH`, falling back to the process CWD if that directory does not exist.
+- On Windows the process is spawned detached with `CREATE_NEW_CONSOLE` — an interactive shell needs its own console for stdin; otherwise it inherits the app's console and exits immediately.
+- Returns `{ status, message, shell, path }`. `shell` is one of `bash`, `git-bash`, `cmd`.
+
+> The `analysis/` note in this file previously flagged `/create-folder` as a fetch with no backend route. The same applied to `/open-terminal`, `/run-file` and `/create-file`. `/open-terminal` is now implemented; the other three remain missing.
