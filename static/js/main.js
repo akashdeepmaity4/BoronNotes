@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Opening or switching to another file must exit preview mode, or a stale
     // rendered pane would sit over the new document.
     if (typeof markdownPreviewOn !== 'undefined' && markdownPreviewOn &&
-        markdownPreview) {
+      markdownPreview) {
       markdownPreview.classList.add('hidden');
       markdownPreviewOn = false;
     }
@@ -451,7 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Table (header row + separator row)
       if (line.indexOf('|') !== -1 && i + 1 < lines.length &&
-          /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(lines[i + 1])) {
+        /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(lines[i + 1])) {
         closeLists();
         const cells = (row) => row.replace(/^\s*\||\|\s*$/g, '')
           .split('|').map(c => c.trim());
@@ -459,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
         i += 2;
         const body = [];
         while (i < lines.length && lines[i].indexOf('|') !== -1 &&
-               lines[i].trim() !== '') {
+          lines[i].trim() !== '') {
           body.push(cells(lines[i]));
           i++;
         }
@@ -511,9 +511,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const buf = [line];
       i++;
       while (i < lines.length && lines[i].trim() !== '' &&
-             !/^\s*(#{1,6}\s|>|```)/.test(lines[i]) &&
-             !/^\s*([-*+]|\d+[.)])\s+/.test(lines[i]) &&
-             !/^\s*([-*_])\s*(\1\s*){2,}$/.test(lines[i])) {
+        !/^\s*(#{1,6}\s|>|```)/.test(lines[i]) &&
+        !/^\s*([-*+]|\d+[.)])\s+/.test(lines[i]) &&
+        !/^\s*([-*_])\s*(\1\s*){2,}$/.test(lines[i])) {
         buf.push(lines[i]);
         i++;
       }
@@ -661,6 +661,10 @@ document.addEventListener('DOMContentLoaded', () => {
         case 'new-file':
           if (actionNewFile) actionNewFile.click();
           else createNewFilePrompt();
+          break;
+        case 'new-folder':
+          if (actionNewFolder) actionNewFolder.click();
+          else createNewFolderPrompt();
           break;
         case 'open-file':
           promptOpenFile();
@@ -921,15 +925,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Standard editor semantics (VS Code / IDLE / Notepad): "Save As" writes the
-  // buffer to a new location and makes that file the active document, leaving
-  // the original in place. Use "Save Copy As" to write a copy without switching.
+  // "Save As" (Ctrl+Shift+S) renames the file the shortcut was pressed in:
+  // the buffer is written to the newly chosen path and the ORIGINAL is removed,
+  // so only one file remains, under the new name. Use "Save Copy As" when the
+  // original should be kept.
   async function triggerSaveAsFile() {
     let targetPath = null;
     const plainContent = getPlainTextFromCanvas();
+    // Capture where the buffer currently lives BEFORE anything overwrites it;
+    // this is the file the rename must delete.
+    const previousFilePath = currentFilePath;
+    const previousHandle = fileHandle;
 
     // Option A: pywebview Native Dialog
-    if (window.pywebview && window.pywebview.api && window.pywebview.api.save_file_dialog) {
+    if (window.pywebview && window.pywebview.api.save_file_dialog) {
       targetPath = await window.pywebview.api.save_file_dialog();
       if (!targetPath) return;
       targetPath = normalizePath(targetPath);
@@ -939,15 +948,16 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           path: targetPath,
-          content: plainContent
+          content: plainContent,
+          old_path: previousFilePath || ''
         })
       })
         .then(res => res.json())
         .then(data => {
           if (data.status === 'success') {
-            // Point the document at the newly saved file; the previous one is kept.
             setActiveDocument(targetPath, null, targetPath.split('/').pop());
             showSaveIndicator();
+            if (data.warning) alert(data.warning);
           } else {
             alert(`Save Failed: ${data.message}`);
           }
@@ -972,7 +982,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const writable = await handle.createWritable();
         await writable.write(plainContent);
         await writable.close();
-        // Point the document at the newly saved file; the previous one is kept.
+        // Rename: remove the original file once the new one is written.
+        if (previousHandle && previousHandle !== handle && previousHandle.remove) {
+          // Original was held as a browser File System handle.
+          try {
+            await previousHandle.remove();
+          } catch (err) {
+            console.warn('Could not remove original file during Save As:', err);
+          }
+        } else if (previousFilePath) {
+          // Original lives on the backend (opened without a handle), so ask the
+          // server to delete it - without this, WebView2 would leave a copy.
+          try {
+            await fetch('/delete-file', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ path: previousFilePath })
+            });
+          } catch (err) {
+            console.warn('Could not remove original backend file during Save As:', err);
+          }
+        }
         setActiveDocument(null, handle, handle.name);
         showSaveIndicator();
         return;
@@ -1003,7 +1033,8 @@ document.addEventListener('DOMContentLoaded', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         path: targetPathStr,
-        content: plainContent
+        content: plainContent,
+        old_path: previousFilePath || ''
       })
     })
       .then(res => res.json())
@@ -1011,6 +1042,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.status === 'success') {
           setActiveDocument(targetPathStr, null, fileNamePrompt);
           showSaveIndicator();
+          if (data.warning) alert(data.warning);
         } else {
           // Download fallback
           const blob = new Blob([plainContent], { type: 'text/plain;charset=utf-8' });
@@ -1206,10 +1238,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Ctrl + Shift + N: Reset Editor Canvas
+    // Ctrl + Shift + N: New Folder
     if (isCtrl && e.shiftKey && key === 'n') {
       e.preventDefault();
-      resetEditorState();
+      if (actionNewFolder) actionNewFolder.click();
+      else createNewFolderPrompt();
       return;
     }
 
@@ -1381,14 +1414,55 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         console.error('[folder] failed to read folder:', err);
         alert('Could not open that folder: ' +
-              (err && err.message ? err.message : err));
+          (err && err.message ? err.message : err));
       } finally {
         try { folderPicker.value = ''; } catch (_) { /* ignore */ }
       }
     });
   }
 
-  function createNewFilePrompt() {
+  function getCreateTargetDir() {
+    if (currentFilePath) {
+      const dir = normalizePath(currentFilePath).split('/');
+      dir.pop();
+      const candidate = dir.join('/');
+      if (candidate && candidate !== '.') return candidate;
+    }
+
+    if (currentRootDir) return currentRootDir;
+    if (selectedTargetDir) return selectedTargetDir;
+    return null;
+  }
+
+  async function createNewFilePrompt() {
+    const target = getCreateTargetDir();
+
+    if (!target) {
+      try {
+        if (window.showSaveFilePicker) {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: `untitled.${currentFileExt || 'md'}`,
+            types: [{
+              description: 'Editable text files',
+              accept: { 'text/plain': ['.txt', '.md', '.csv', '.json', '.html'] }
+            }]
+          });
+          const writable = await handle.createWritable();
+          await writable.write('');
+          await writable.close();
+          setActiveDocument(null, handle, handle.name);
+          currentFileExt = getExtension(handle.name) || currentFileExt;
+          if (textCanvas) textCanvas.replaceChildren();
+          updateLineNumbers();
+          return;
+        }
+      } catch (err) {
+        if (err && err.name !== 'AbortError') {
+          console.warn('Native new-file picker failed:', err);
+        }
+      }
+    }
+
     const fileName = prompt('Enter new file name:');
     if (!fileName) return;
 
@@ -1398,65 +1472,84 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // New files must use one of the editable text extensions.
     if (!isEditableExtension(getExtension(fileName))) {
       alert('New files must be .txt, .md, .csv, .json or .html.');
       return;
     }
 
-    const target = selectedTargetDir || currentRootDir;
-    if (!target) {
-      triggerSaveAsFile();
-      return;
-    }
-
+    const targetDir = target || currentRootDir || '.';
     fetch('/create-file', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target_dir: target, name: fileName })
+      body: JSON.stringify({ target_dir: targetDir, name: fileName })
     })
       .then(res => res.json())
       .then(data => {
         if (data.status === 'success') {
-          setActiveDocument(normalizePath(`${target}/${fileName}`), null, fileName);
-          currentFileExt = fileName.split('.').pop().toLowerCase();
+          setActiveDocument(normalizePath(`${targetDir}/${fileName}`), null, fileName);
+          currentFileExt = getExtension(fileName) || currentFileExt;
           if (textCanvas) textCanvas.replaceChildren();
           updateLineNumbers();
         } else {
-          alert(data.message);
+          alert(data.message || 'Could not create the file.');
         }
+      })
+      .catch(err => {
+        console.error('Error creating file:', err);
+        alert('Could not create the file.');
+      });
+  }
+
+  async function createNewFolderPrompt() {
+    const target = getCreateTargetDir();
+
+    if (!target) {
+      try {
+        if (window.showDirectoryPicker) {
+          const dirHandle = await window.showDirectoryPicker();
+          const folderName = prompt('Enter new folder name:');
+          if (!folderName) return;
+          await dirHandle.getDirectoryHandle(folderName, { create: true });
+          return;
+        }
+      } catch (err) {
+        if (err && err.name !== 'AbortError') {
+          console.warn('Native new-folder picker failed:', err);
+        }
+      }
+    }
+
+    const folderName = prompt('Enter new folder name:');
+    if (!folderName) return;
+
+    const normalizedFolder = normalizePath(folderName);
+    if (normalizedFolder === '.git' || normalizedFolder.startsWith('.git/')) {
+      alert('Cannot create .git folders.');
+      return;
+    }
+
+    const targetDir = target || currentRootDir || '.';
+    fetch('/create-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_dir: targetDir, name: folderName })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status !== 'success') {
+          alert(data.message || 'Could not create the folder.');
+        }
+      })
+      .catch(err => {
+        console.error('Error creating folder:', err);
+        alert('Could not create the folder.');
       });
   }
 
   if (actionNewFile) actionNewFile.addEventListener('click', createNewFilePrompt);
 
   if (actionNewFolder) {
-    actionNewFolder.addEventListener('click', () => {
-      const folderName = prompt('Enter new folder name:');
-      if (!folderName) return;
-
-      const normalizedFolder = normalizePath(folderName);
-      if (normalizedFolder === '.git') {
-        alert('Cannot create .git folder.');
-        return;
-      }
-
-      const target = selectedTargetDir || currentRootDir;
-      if (!target) {
-        alert('Select or open a folder target first.');
-        return;
-      }
-
-      fetch('/create-folder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_dir: target, name: folderName })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.status !== 'success') alert(data.message);
-        });
-    });
+    actionNewFolder.addEventListener('click', createNewFolderPrompt);
   }
 
   function renderNativeTreeUI(rootDirName, treeData) {
@@ -1506,6 +1599,10 @@ document.addEventListener('DOMContentLoaded', () => {
           const pathVal = node.fileObj
             ? (node.fileObj.path || node.fileObj.webkitRelativePath)
             : null;
+          const targetDir = pathVal
+            ? normalizePath(pathVal).split('/').slice(0, -1).join('/') || '.'
+            : normalizePath(`${currentRootDir || '.'}`);
+          selectedTargetDir = targetDir;
           setActiveDocument(
             pathVal
               ? normalizePath(pathVal)
@@ -1531,6 +1628,7 @@ document.addEventListener('DOMContentLoaded', () => {
           e.stopPropagation();
           clearTreeSelections();
           folderBtn.style.backgroundColor = 'var(--bg-active, #2a2d32)';
+          selectedTargetDir = normalizePath(`${currentRootDir || '.'}/${key}`);
 
           const isHidden = childGroup.style.display === 'none';
           childGroup.style.display = isHidden ? 'block' : 'none';

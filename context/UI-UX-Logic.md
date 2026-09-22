@@ -66,6 +66,13 @@ if (logoBtn) {
 
 - logoBtn (the green chevron) → classList.remove('collapsed'). Expand only — clicking it when already open does nothing. That's deliberate: the logo stays visible when collapsed, so it serves as the "reopen" affordance.
 
+### Creation target semantics - static/js/main.js:
+
+- `getCreateTargetDir()` resolves the destination in this order: current active file's directory, current open root folder, selected directory, then the native fallback for an empty state.
+- `Ctrl+N` creates a new file, and `Ctrl+Shift+N` creates a new folder.
+- When a file is open, both actions target the file's parent directory; when a directory is open, they target that directory root instead; if no tree item is active, they defer to the OS-native file-picker flow.
+- This mirrors the normal Explorer behavior and prevents creation from silently landing in a stale or unrelated path.
+
 
 
 > Both 1. and 2. are guarded with if (el), so a missing element degrades to a no-op rather than a null crash.

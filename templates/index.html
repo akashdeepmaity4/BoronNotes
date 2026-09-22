@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Veritas Notes</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
 
   <input type="file" id="filePicker" style="display: none;"
-          accept=".txt,.md,.markdown,.csv,.json,.html,.htm,.png,.jpg,.jpeg,.pdf,.doc,.docx,.gdoc">
+    accept=".txt,.md,.markdown,.csv,.json,.html,.htm,.png,.jpg,.jpeg,.pdf,.doc,.docx,.gdoc">
   <input type="file" id="folderPicker" webkitdirectory directory style="display: none;">
   <input type="file" id="native-file-picker" style="display: none;"
-          accept=".txt,.md,.markdown,.csv,.json,.html,.htm,.png,.jpg,.jpeg,.pdf,.doc,.docx,.gdoc">
+    accept=".txt,.md,.markdown,.csv,.json,.html,.htm,.png,.jpg,.jpeg,.pdf,.doc,.docx,.gdoc">
 
   <header class="app-header">
     <span class="app-title">Veritas Notes</span>
@@ -22,6 +24,9 @@
       <div id="file-dropdown" class="app-dropdown-menu hidden">
         <div class="dropdown-item" data-action="new-file">
           <span>New File</span><span class="shortcut">Ctrl+N</span>
+        </div>
+        <div class="dropdown-item" data-action="new-folder">
+          <span>New Folder</span><span class="shortcut">Ctrl+Shift+N</span>
         </div>
         <div class="dropdown-item" data-action="open-file">
           <span>Open...</span><span class="shortcut">Ctrl+O</span>
@@ -103,7 +108,7 @@
       </div>
     </div>
 
-<!-- Settings Menu Dropdown Wrapper -->
+    <!-- Settings Menu Dropdown Wrapper -->
     <div class="menu-dropdown-container">
       <button class="menu-item" id="settings-menu-btn">Settings</button>
       <div id="settings-dropdown" class="app-dropdown-menu hidden">
@@ -113,7 +118,7 @@
         </div>
       </div>
     </div>
-      </div>
+    </div>
     </div>
   </header>
 
@@ -121,7 +126,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <svg class="logo-icon" id="logoBtn" viewBox="0 0 24 24">
-          <path d="M12 2L2 19h20L12 2zm0 4l6.5 11h-13L12 6z"/>
+          <path d="M12 2L2 19h20L12 2zm0 4l6.5 11h-13L12 6z" />
         </svg>
         <span class="sidebar-title" id="notesToggleBtn">Notes</span>
         <div class="sidebar-actions">
@@ -139,7 +144,8 @@
         <div class="header-tools">
           <button class="tool-icon">&lt;/&gt;</button>
           <button class="tool-icon" id="saveFileBtn" title="Save File (Ctrl+S)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
               <polyline points="17 21 17 13 7 13 7 21"></polyline>
               <polyline points="7 3 7 8 15 8"></polyline>
@@ -177,4 +183,5 @@
 
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
+
 </html>

@@ -337,13 +337,15 @@ def save_file():
     # Save editor content to a path relative to STORAGE_PATH.
     # Mirrors /file-content's contract: takes {path, content} and replies with
     # {status, message} so the front-end can handle both routes uniformly.
-    # "Save As" follows the standard editor contract (VS Code / IDLE / Notepad):
-    # write the buffer to the chosen path and let the caller treat that file as
-    # the document. The original file is intentionally left on disk untouched -
-    # "Save As" makes a copy at a new location, it is not a rename.
+    #
+    # Rename semantics for "Save As" (Ctrl+Shift+S): the caller passes old_path
+    # (the file the buffer came from). The content is written to the new path
+    # first; only once that succeeds is the original removed, so the operation
+    # is an atomic-looking rename and never leaves two files behind.
     data = request.get_json() or {}
     rel_path = data.get('path', '')
     content = data.get('content', '')
+    old_rel_path = data.get('old_path', '')
 
     if not rel_path:
         return jsonify({'status': 'error', 'message': 'No path supplied'}), 400
@@ -362,14 +364,139 @@ def save_file():
     os.makedirs(os.path.dirname(abs_path), exist_ok=True)
     with open(abs_path, 'w', encoding='utf-8') as f:
         f.write(content)
+
+    # Remove the original file now that the renamed copy is safely on disk.
+    if old_rel_path:
+        abs_old_path = os.path.abspath(os.path.join(STORAGE_PATH, old_rel_path))
+        if (os.path.commonpath([abs_old_path, storage]) == storage
+                and abs_old_path != abs_path
+                and os.path.isfile(abs_old_path)):
+            try:
+                os.remove(abs_old_path)
+            except OSError as err:
+                # The rename target is written; surface the leftover so the
+                # front-end can warn that the old file is still present.
+                return jsonify({
+                    'status': 'success',
+                    'name': filename,
+                    'warning': f'Old file could not be removed: {err}'
+                })
+    return jsonify({'status': 'success', 'name': filename})
+
+
+def resolve_storage_target(target_dir=None):
+    storage_root = os.path.abspath(STORAGE_PATH)
+    if not target_dir or target_dir in ('.', './'):
+        return storage_root
+
+    if os.path.isabs(target_dir):
+        candidate = os.path.abspath(target_dir)
+    else:
+        candidate = os.path.abspath(os.path.join(STORAGE_PATH, target_dir))
+
+    try:
+        if os.path.commonpath([candidate, storage_root]) != storage_root:
+            return None
+    except ValueError:
+        return None
+
+    os.makedirs(candidate, exist_ok=True)
+    return candidate
+
+
+@app.route('/create-file', methods=['POST'])
+def create_file():
+    data = request.get_json() or {}
+    target_dir = data.get('target_dir')
+    name = (data.get('name') or '').strip()
+
+    if not name:
+        return jsonify({'status': 'error', 'message': 'File name is required.'}), 400
+
+    safe_name = os.path.basename(name.replace('\\', '/'))
+    if not safe_name or safe_name in ('.', '..'):
+        return jsonify({'status': 'error', 'message': 'Invalid file name.'}), 400
+    if safe_name.startswith('.git'):
+        return jsonify({'status': 'error', 'message': 'Cannot create .git files.'}), 400
+    if not is_editable(safe_name):
+        return jsonify({'status': 'error', 'message': 'Only .txt, .md, .csv, .json, .html files can be created here.'}), 400
+
+    target_path = resolve_storage_target(target_dir)
+    if target_path is None:
+        return jsonify({'status': 'error', 'message': 'Target directory is outside the storage root.'}), 400
+
+    full_path = os.path.join(target_path, safe_name)
+    if os.path.exists(full_path):
+        return jsonify({'status': 'error', 'message': f'File "{safe_name}" already exists.'}), 409
+
+    with open(full_path, 'w', encoding='utf-8') as f:
+        f.write('')
+
+    rel_path = os.path.relpath(full_path, STORAGE_PATH).replace('\\', '/')
+    return jsonify({'status': 'success', 'path': rel_path, 'name': safe_name})
+
+
+@app.route('/create-folder', methods=['POST'])
+def create_folder():
+    data = request.get_json() or {}
+    target_dir = data.get('target_dir')
+    name = (data.get('name') or '').strip()
+
+    if not name:
+        return jsonify({'status': 'error', 'message': 'Folder name is required.'}), 400
+
+    safe_name = os.path.basename(name.replace('\\', '/'))
+    if not safe_name or safe_name in ('.', '..'):
+        return jsonify({'status': 'error', 'message': 'Invalid folder name.'}), 400
+    if safe_name == '.git' or safe_name.startswith('.git'):
+        return jsonify({'status': 'error', 'message': 'Cannot create .git folders.'}), 400
+
+    target_path = resolve_storage_target(target_dir)
+    if target_path is None:
+        return jsonify({'status': 'error', 'message': 'Target directory is outside the storage root.'}), 400
+
+    full_path = os.path.join(target_path, safe_name)
+    if os.path.exists(full_path):
+        return jsonify({'status': 'error', 'message': f'Folder "{safe_name}" already exists.'}), 409
+
+    os.makedirs(full_path, exist_ok=True)
+    rel_path = os.path.relpath(full_path, STORAGE_PATH).replace('\\', '/')
+    return jsonify({'status': 'success', 'path': rel_path, 'name': safe_name})
+
+
+@app.route('/delete-file', methods=['POST'])
+def delete_file():
+    # Remove a single writable text file from STORAGE_PATH.
+    # Used by "Save As" in the WebView2 path, where the new copy is written by
+    # the browser's File System Access API (so the server never sees it) but the
+    # original still has to be deleted to make the operation a rename.
+    data = request.get_json() or {}
+    rel_path = data.get('path', '')
+    if not rel_path:
+        return jsonify({'status': 'error', 'message': 'No path supplied'}), 400
+    storage = os.path.abspath(STORAGE_PATH)
+    abs_path = os.path.abspath(os.path.join(STORAGE_PATH, rel_path))
+    if os.path.commonpath([abs_path, storage]) != storage:
+        return jsonify({'status': 'error', 'message': 'Path escapes storage'}), 400
+    # Only plain / structured text files may ever be removed.
+    filename = os.path.basename(abs_path)
+    if not is_editable(filename):
+        return jsonify({
+            'status': 'error',
+            'message': f'".{get_ext(filename)}" files cannot be removed.'
+        }), 400
+    if not os.path.isfile(abs_path):
+        return jsonify({'status': 'error', 'message': 'File not found'}), 404
+    try:
+        os.remove(abs_path)
+    except OSError as err:
+        return jsonify({'status': 'error', 'message': str(err)}), 500
     return jsonify({'status': 'success', 'name': filename})
 
 @app.route('/open-terminal', methods=['POST'])
 def open_terminal():
-    # Launch an interactive terminal at the storage directory.
     # Preference order: bash on PATH -> Git Bash (default install paths)
-    # -> cmd.exe. The terminal inherits the app's own console, so if the app
-    # was started from an existing shell it opens in that window.
+    # -> cmd.exe.
     workdir = STORAGE_PATH if os.path.isdir(STORAGE_PATH) else os.getcwd()
 
     candidates = []
