@@ -2,7 +2,9 @@ build/
 dist/
 *.spec
 *.exe
-
+.log
+logs/
+log/
 __pycache__/
 *.pyc
 *.pyo

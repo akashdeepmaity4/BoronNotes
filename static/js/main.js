@@ -92,6 +92,12 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('File open is unavailable in this environment.');
       return;
     }
+    // Ctrl+O opens a fresh document: drop the current buffer/identity so the
+    // editor is empty before the new file lands (openPickedFile dumps again on
+    // the actual selection, which is harmless and idempotent).
+    discardEditorState();
+    setEditable(true);
+    updateLineNumbers();
     picker.value = '';   // allow re-picking the same file after a failed open
     picker.click();
   }
@@ -215,9 +221,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // plain / structured text -> editable canvas
+    // The header label is owned by setActiveDocument() (called by the open
+    // path before this runs), so it is deliberately not written here.
     hideAllViewers();
     setEditable(true);
-    if (activeFileName) activeFileName.textContent = name;
     if (textCanvas) {
       textCanvas.replaceChildren();
       // Preserve the exact text (including indentation) character for character,
@@ -242,12 +249,19 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // Opening a different file discards the current buffer and document
+    // completely, so nothing from the previous file leaks into this one.
+    discardEditorState();
+
     const ext = getExtension(name);
     const kind = classifyExtension(ext);
-    currentFilePath = file.path
-      ? normalizePath(file.path)
-      : normalizePath(`${currentRootDir || '.'}/${name}`);
-    fileHandle = null;
+    setActiveDocument(
+      file.path
+        ? normalizePath(file.path)
+        : normalizePath(`${currentRootDir || '.'}/${name}`),
+      null,
+      name
+    );
 
     // Binary types are read as data URLs; text types as text.
     const reader = new FileReader();
@@ -297,7 +311,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (assetBadge) assetBadge.textContent = `Read-only asset — ${name}`;
     if (assetImage) assetImage.src = src;
     if (assetViewer) assetViewer.classList.remove('hidden');
-    if (activeFileName) activeFileName.textContent = name;
   }
 
   // Render a document (pdf/docx/gdoc) strictly for viewing.
@@ -315,7 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (docFallback) docFallback.hidden = inlineCapable;
     if (docDownloadLink) docDownloadLink.href = src;
     if (docViewer) docViewer.classList.remove('hidden');
-    if (activeFileName) activeFileName.textContent = name;
   }
 
   // -----------------------------------------------------------------------
@@ -909,6 +921,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Standard editor semantics (VS Code / IDLE / Notepad): "Save As" writes the
+  // buffer to a new location and makes that file the active document, leaving
+  // the original in place. Use "Save Copy As" to write a copy without switching.
   async function triggerSaveAsFile() {
     let targetPath = null;
     const plainContent = getPlainTextFromCanvas();
@@ -930,10 +945,8 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(res => res.json())
         .then(data => {
           if (data.status === 'success') {
-            currentFilePath = targetPath;
-            fileHandle = null;
-            const fileName = targetPath.split('/').pop();
-            if (activeFileName) activeFileName.textContent = fileName;
+            // Point the document at the newly saved file; the previous one is kept.
+            setActiveDocument(targetPath, null, targetPath.split('/').pop());
             showSaveIndicator();
           } else {
             alert(`Save Failed: ${data.message}`);
@@ -959,9 +972,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const writable = await handle.createWritable();
         await writable.write(plainContent);
         await writable.close();
-        fileHandle = handle;
-        currentFilePath = null;
-        if (activeFileName) activeFileName.textContent = handle.name;
+        // Point the document at the newly saved file; the previous one is kept.
+        setActiveDocument(null, handle, handle.name);
         showSaveIndicator();
         return;
       } catch (err) {
@@ -997,9 +1009,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(res => res.json())
       .then(data => {
         if (data.status === 'success') {
-          currentFilePath = targetPathStr;
-          fileHandle = null;
-          if (activeFileName) activeFileName.textContent = fileNamePrompt;
+          setActiveDocument(targetPathStr, null, fileNamePrompt);
           showSaveIndicator();
         } else {
           // Download fallback
@@ -1052,14 +1062,41 @@ document.addEventListener('DOMContentLoaded', () => {
     URL.revokeObjectURL(downloadLink.href);
   }
 
-  function resetEditorState() {
-    currentFilePath = null;
-    fileHandle = null;
+  // --- Single source of truth for the active document -------------------------
+  //
+  // The editor tracks the current file in three places that used to be written
+  // independently (and could therefore disagree):
+  //   * currentFilePath   - backend/server-relative path
+  //   * fileHandle        - browser File System Access handle
+  //   * activeFileName    - the label in the header
+  // setActiveDocument() is now the ONLY code allowed to touch all three, so the
+  // pointers are fused and can never point at different files.
+  function setActiveDocument(path, handle, label) {
+    currentFilePath = path || null;
+    fileHandle = handle || null;
+    if (activeFileName) activeFileName.textContent = label || 'No file open';
+  }
+
+  // Wipe every trace of the current document: buffer, identity, file type and
+  // the read-only viewers' backing sources. Used before any open, so opening a
+  // new file or folder dumps the previous file entirely instead of layering on
+  // top of it.
+  function discardEditorState() {
+    setActiveDocument(null, null, 'No file open');
     currentFileExt = 'md';
-    if (activeFileName) activeFileName.textContent = 'No file open';
-    if (textCanvas) textCanvas.innerHTML = '';
+    if (textCanvas) textCanvas.replaceChildren();
+    // Release the viewers' backing media so a stale image / document / download
+    // link cannot survive into the next file.
+    if (assetImage) assetImage.removeAttribute('src');
+    if (docFrame) docFrame.src = 'about:blank';
+    if (docDownloadLink) docDownloadLink.removeAttribute('href');
+    if (markdownBody) markdownBody.replaceChildren();
     markdownPreviewOn = false;
     hideAllViewers();
+  }
+
+  function resetEditorState() {
+    discardEditorState();
     setEditable(true);
     updateLineNumbers();
   }
@@ -1235,6 +1272,11 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         ctrlKPressed = false;
         clearTimeout(ctrlKTimeout);
+        // Ctrl+K then O opens a folder as a fresh workspace: dump the current
+        // document so only the selected folder's contents remain.
+        discardEditorState();
+        setEditable(true);
+        updateLineNumbers();
         if (folderPicker) folderPicker.click();
       } else if (isCtrl) {
         e.preventDefault();
@@ -1278,6 +1320,12 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
+
+        // A folder was genuinely chosen: dump the current document/buffer so
+        // the editor shows only what this folder provides.
+        discardEditorState();
+        setEditable(true);
+        updateLineNumbers();
 
         // Some hosts (notably WebView2 on Windows) do not populate
         // webkitRelativePath. Fall back to the file name so a folder still
@@ -1370,11 +1418,9 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(res => res.json())
       .then(data => {
         if (data.status === 'success') {
-          currentFilePath = normalizePath(`${target}/${fileName}`);
-          fileHandle = null;
+          setActiveDocument(normalizePath(`${target}/${fileName}`), null, fileName);
           currentFileExt = fileName.split('.').pop().toLowerCase();
-          if (activeFileName) activeFileName.textContent = fileName;
-          if (textCanvas) textCanvas.innerHTML = '';
+          if (textCanvas) textCanvas.replaceChildren();
           updateLineNumbers();
         } else {
           alert(data.message);
@@ -1460,9 +1506,13 @@ document.addEventListener('DOMContentLoaded', () => {
           const pathVal = node.fileObj
             ? (node.fileObj.path || node.fileObj.webkitRelativePath)
             : null;
-          currentFilePath = pathVal
-            ? normalizePath(pathVal)
-            : normalizePath(`${currentRootDir || '.'}/${key}`);
+          setActiveDocument(
+            pathVal
+              ? normalizePath(pathVal)
+              : normalizePath(`${currentRootDir || '.'}/${key}`),
+            null,
+            key
+          );
 
           openPickedFile(node.fileObj);
         });

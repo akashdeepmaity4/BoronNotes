@@ -337,6 +337,10 @@ def save_file():
     # Save editor content to a path relative to STORAGE_PATH.
     # Mirrors /file-content's contract: takes {path, content} and replies with
     # {status, message} so the front-end can handle both routes uniformly.
+    # "Save As" follows the standard editor contract (VS Code / IDLE / Notepad):
+    # write the buffer to the chosen path and let the caller treat that file as
+    # the document. The original file is intentionally left on disk untouched -
+    # "Save As" makes a copy at a new location, it is not a rename.
     data = request.get_json() or {}
     rel_path = data.get('path', '')
     content = data.get('content', '')
