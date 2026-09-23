@@ -156,14 +156,22 @@ document.addEventListener('DOMContentLoaded', () => {
   if (linesStatusText) linesStatusText.textContent = 'Show Line Numbers';
 
   // Sidebar Action Buttons
+  // Bind by action metadata instead of hardcoded emoji text so the buttons can
+  // render any inline SVG without changing the logic.
   const actionButtons = document.querySelectorAll('.action-btn');
-  let actionNewFile = null;
-  let actionNewFolder = null;
+  const resolveActionButton = (actionName) => {
+    const explicit = document.querySelector(`.action-btn[data-action="${actionName}"]`);
+    if (explicit) return explicit;
 
-  actionButtons.forEach(btn => {
-    if (btn.textContent.includes('➕') || btn.textContent.includes('+')) actionNewFile = btn;
-    if (btn.textContent.includes('📁')) actionNewFolder = btn;
-  });
+    const fallback = Array.from(actionButtons).find(btn => {
+      const name = (btn.getAttribute('data-action') || btn.getAttribute('aria-label') || btn.title || btn.textContent || '').toLowerCase();
+      return name.includes(actionName.replace('-', ' '));
+    });
+    return fallback || null;
+  };
+
+  const actionNewFile = resolveActionButton('new-file');
+  const actionNewFolder = resolveActionButton('new-folder');
 
   // State Variables
   let currentRootDir = null;

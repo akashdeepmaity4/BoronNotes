@@ -130,8 +130,21 @@
         </svg>
         <span class="sidebar-title" id="notesToggleBtn">Notes</span>
         <div class="sidebar-actions">
-          <button class="action-btn">➕</button>
-          <button class="action-btn">📁</button>
+          <button class="action-btn" type="button" data-action="new-file" aria-label="New file">
+            <svg xmlns="http://w3.org" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <path d="M14 2v6h6M9 15h6m-3-3v6" />
+            </svg>
+          </button>
+          <button class="action-btn" type="button" data-action="new-folder" aria-label="New folder">
+            <svg xmlns="http://w3.org" viewBox="0 0 24 24" width="24" height="24" fill="none">
+              <path d="M22 19V9a2 2 0 0 0-2-2h-7l-2-3H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M19 13v8m-4-4h8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+          </button>
         </div>
       </div>
 
