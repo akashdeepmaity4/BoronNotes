@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const italicToggle = document.getElementById('italicToggle');
 
   // Base GitHub Repository URL
-  const GITHUB_REPO_URL = 'https://github.com/akashdeepmaity4/VeritasCode/blob/main';
+  const GITHUB_REPO_URL = 'https://github.com/akashdeepmaity4/BoronCode/blob/main';
 
   // Line Numbers Sidebar Container Setup
   const gridContainer = document.querySelector('.editor-grid-container');

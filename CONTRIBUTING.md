@@ -1,4 +1,4 @@
-# Contributing to Emerald Notes
+# Contributing to Boron Notes
 
 Thank you for your interest in contributing! We welcome all contributions, from bug reports and documentation fixes to major new features. 
 
@@ -66,4 +66,4 @@ Once submitted, a maintainer will review your PR. We may ask for changes or clar
 
 If you have questions or get stuck, feel free to open a discussion by dropping a comment in your open issue/PR.
 
-Thank you for making Emerald Notes better!
+Thank you for making Boron Notes better!

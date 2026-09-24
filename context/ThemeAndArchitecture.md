@@ -24,7 +24,7 @@ This file is to be treated as the file truth about anything in this project.
 ### Design Language
 
 - VS Code-inspired desktop shell: compact 12–13px chrome, 20px editor text areas, flat surfaces, hairline 1px borders.
-- Single accent colour (`veritas-green`) used sparingly — branding, focus rings, active states, dropdown highlights.
+- Single accent colour (`Boron-green`) used sparingly — branding, focus rings, active states, dropdown highlights.
 - Two themes driven entirely by CSS custom properties on `:root`, `.root-dark` and `.root-light`. Theme is toggled by adding `.root-light` to `<body>`.
 - Dark theme is the default (the `:root` values).
 - System font stack for UI: `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`; `monospace` is used only for line numbers.
@@ -39,8 +39,8 @@ This file is to be treated as the file truth about anything in this project.
   - `--bg-hover`: `#2a2d2e` — hover surface for menus, tree rows, tool icons
   - `--bg-active`: `#37373d` — active/selected surface (also tile trees, viewer badges)
 - Brand
-  - `--veritas-green`: `#00bd61` — primary accent (logo, titles, focus border, dropdown hover, selection)
-  - `--veritas-green-hover`: `#3cff00` — brighter accent for hover on brand text / active tree file
+  - `--Boron-green`: `#00bd61` — primary accent (logo, titles, focus border, dropdown hover, selection)
+  - `--Boron-green-hover`: `#3cff00` — brighter accent for hover on brand text / active tree file
 - Text
   - `--text-main`: `#cccccc` — default body text
   - `--text-muted`: `#858585` — secondary text, icons, line numbers
@@ -79,7 +79,7 @@ This file is to be treated as the file truth about anything in this project.
 - `#0078d7` → `#005a9e` — subpanel button and its hover
 - `#fff` — document viewer iframe background
 - `#28a745` (JS) — save-success flash on the save button
-- `--veritas-green` on `.tool-icon:hover` — tool icons light up green on hover
+- `--Boron-green` on `.tool-icon:hover` — tool icons light up green on hover
 
 ### Typography
 
@@ -98,9 +98,9 @@ This file is to be treated as the file truth about anything in this project.
 ### Components
 
 - **App header** — flat bar holding the title and the File / Edit / View / Settings dropdown triggers.
-- **Dropdowns** (`.app-dropdown-menu`) — absolutely positioned, `min-width: 210px`, light surface, `z-index: 1000`, `2px 2px 5px rgba(0,0,0,0.2)` shadow; items highlight with `--veritas-green` + white text; `.hidden` force-hides.
-- **Sidebar tree** — folder rows (muted, 600) and file rows (main text, indented `28px`, hover surface); `.active` file uses `--bg-active` + `--veritas-green-hover`.
-- **Editor** (`.text-canvas`) — dashed `--border-color` outline, transparent background, solid `--veritas-green` on focus.
+- **Dropdowns** (`.app-dropdown-menu`) — absolutely positioned, `min-width: 210px`, light surface, `z-index: 1000`, `2px 2px 5px rgba(0,0,0,0.2)` shadow; items highlight with `--Boron-green` + white text; `.hidden` force-hides.
+- **Sidebar tree** — folder rows (muted, 600) and file rows (main text, indented `28px`, hover surface); `.active` file uses `--bg-active` + `--Boron-green-hover`.
+- **Editor** (`.text-canvas`) — dashed `--border-color` outline, transparent background, solid `--Boron-green` on focus.
 - **Line numbers** (`.line-numbers`) — monospace, right-aligned, muted, `border-right` separator, `user-select: none`, toggled via `.hidden`.
 - **Asset viewer** (`.asset-viewer`) — centred `<img>`, `object-fit: contain`, inert (`pointer-events: none`, `user-select: none`, `-webkit-user-drag: none`).
 - **Document viewer** (`.doc-viewer`) — column flex with a full-bleed `<iframe>` on `#fff`; `.doc-fallback` link for non-previewable formats.
@@ -110,8 +110,8 @@ This file is to be treated as the file truth about anything in this project.
 ### Interaction Conventions
 
 - Hover: text lightens (`--text-muted` → `--text-main`) and/or gains `--bg-hover`.
-- Focus: `--veritas-green` border on the editable canvas.
-- Selection: `::selection` = white on `--veritas-green`.
+- Focus: `--Boron-green` border on the editable canvas.
+- Selection: `::selection` = white on `--Boron-green`.
 - Motion: short, subtle — `0.1s ease` for transforms, `0.2s ease` for the sidebar width.
 - `.hidden` is the universal visibility switch (`display: none !important`).
 

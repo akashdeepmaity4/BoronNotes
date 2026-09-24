@@ -11,7 +11,7 @@ import app.app as app_module
 
 class CreateRoutesTests(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.mkdtemp(prefix='veritasnotes-test-')
+        self.temp_dir = tempfile.mkdtemp(prefix='Boronnotes-test-')
         app_module.STORAGE_PATH = self.temp_dir
         self.client = app_module.app.test_client()
 

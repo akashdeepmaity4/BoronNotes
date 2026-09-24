@@ -15,7 +15,7 @@ except ImportError as e:
 
 if __name__ == "__main__":
     webview.create_window(
-        title="Veritas Notes (previously Emerald Notes)",
+        title="Boron Notes",
         url=app,
         width=1200,
         height=800,

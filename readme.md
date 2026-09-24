@@ -1,10 +1,10 @@
-# VERITAS NOTES
+# BORON NOTES
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Version](https://img.shields.io/badge/version-3.0.0-brightgreen)
-![ParentProduct](https://img.shields.io/badge/aVeritasCodeProduct-darkblue)
+![ParentProduct](https://img.shields.io/badge/aBoronCodeProduct-darkblue)
 
-Veritas Notes is a stripped-down version of Veritas Code. It is an ultra-lightweight standard text editor which allows the user to create and edit any text-based file. It is fully local, keeping your files 100% safe inside your own local storage. Veritas Notes is also a Markdown note-taking application made to be a lite alternative to Obsidian.
+Boron Notes is a stripped-down version of Boron Code. It is an ultra-lightweight standard text editor which allows the user to create and edit any text-based file. It is fully local, keeping your files 100% safe inside your own local storage. Boron Notes is also a Markdown note-taking application made to be a lite alternative to Obsidian.
 
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=JavaScript&logoColor=blue)
@@ -42,19 +42,19 @@ Veritas Notes is a stripped-down version of Veritas Code. It is an ultra-lightwe
 
 ## How to Use
 
-1. Download the codebase to a directory named 'VeritasNotes'. This will act as the root directory.
-1. Open 'remakeexecutable.sh' and change line 2 to the location of VeritasNotes root directory. 
+1. Download the codebase to a directory named 'BoronNotes'. This will act as the root directory.
+1. Open 'remakeexecutable.sh' and change line 2 to the location of BoronNotes root directory. 
 1. Run 'remakeexecutable.sh' via Bash to make a safe application.
 
 ### OR
 
-1. Download the codebase to a directory named 'VeritasNotes'. This will act as the root directory.
+1. Download the codebase to a directory named 'BoronNotes'. This will act as the root directory.
 1. Run 'launcher.py' via python in Command Prompt/ Bourne Again Shell (Bash).
 1. This opens a native webapp.
 
 ### OR
 
-1. Download the codebase to a directory named 'VeritasNotes'. This will act as the root directory.
+1. Download the codebase to a directory named 'BoronNotes'. This will act as the root directory.
 1. Run 'app/app.py' via python.
 1. Navigate to http://localhost:5000 in your browser.
 
