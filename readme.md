@@ -14,7 +14,7 @@ Boron Notes is a stripped-down version of Boron Code. It is an ultra-lightweight
 
 1. Native dark mode and Industry-standard IDE inspired look.
 1. Minimal, snappy, reliable. Easy to get into even as a beginner.
-1. Fully locally ran. Your notes stay ON YOUR DEVICE ( [terms and conditions](TermsandConditions.md) apply ).
+1. Fully locally ran. Your notes stay ON YOUR DEVICE
 
 ## HIGHLIGHTS
 
@@ -28,7 +28,7 @@ Boron Notes is a stripped-down version of Boron Code. It is an ultra-lightweight
 
 | Shortcut | Action | Implementation |
 | --- | --- | --- |
-| `Ctrl + N` | New file in root/target directory | Triggers sidebar button or fallback prompt |
+| `Ctrl + N` | New file in root/target directory | Triggers sidebar buttons or fallback prompt |
 | `Ctrl + Shift + N` | Fresh window ("No file open") | Resets active file state and clears editor canvas |
 | `Ctrl + `` | Open default Bash or CMD terminal | Calls `POST /open-terminal` |
 | `Ctrl + S` | Save active file | Calls `POST /save-file` |
@@ -72,6 +72,6 @@ Boron Notes is a stripped-down version of Boron Code. It is an ultra-lightweight
 
 ### Install Dependencies
 
-```
+```bash
 pip install -r requirements.txt
 ```
