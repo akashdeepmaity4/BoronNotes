@@ -493,11 +493,50 @@ def delete_file():
         return jsonify({'status': 'error', 'message': str(err)}), 500
     return jsonify({'status': 'success', 'name': filename})
 
+# terminal handlers - 
+# to not resort to C:/users/xyz/appdate/local/_MEsomething/storage always
+
+def find_git_repo_root(start_path):
+    candidate = os.path.abspath(start_path)
+    while True:
+        git_dir = os.path.join(candidate, '.git')
+        if os.path.isdir(git_dir):
+            return candidate
+        parent = os.path.dirname(candidate)
+        if parent == candidate:
+            return None
+        candidate = parent
+
+
+def resolve_terminal_workdir(requested_path=None):
+    if requested_path:
+        raw = str(requested_path).strip().strip('"\'')
+        if raw:
+            candidate = os.path.abspath(raw)
+            if os.path.isfile(candidate):
+                repo_root = find_git_repo_root(os.path.dirname(candidate))
+                return repo_root or os.path.dirname(candidate)
+            if os.path.isdir(candidate):
+                repo_root = find_git_repo_root(candidate)
+                return repo_root or candidate
+            if os.path.isfile(os.path.normpath(candidate)):
+                repo_root = find_git_repo_root(os.path.dirname(os.path.normpath(candidate)))
+                return repo_root or os.path.dirname(os.path.normpath(candidate))
+    if os.name == 'nt':
+        c_root = os.path.abspath('C:\\')
+        if os.path.exists(c_root):
+            return c_root
+        return os.path.abspath(os.sep)
+    return os.path.abspath(os.sep)
+
+
 @app.route('/open-terminal', methods=['POST'])
 def open_terminal():
     # Preference order: bash on PATH -> Git Bash (default install paths)
-    # -> cmd.exe.
-    workdir = STORAGE_PATH if os.path.isdir(STORAGE_PATH) else os.getcwd()
+    # -> Git Bash Start Menu shortcut -> cmd.exe.
+    data = request.get_json(silent=True) or {}
+    requested_path = data.get('path') or data.get('cwd') or data.get('target_dir') or data.get('root')
+    workdir = resolve_terminal_workdir(requested_path)
 
     candidates = []
 
@@ -518,7 +557,12 @@ def open_terminal():
             if os.path.isfile(path):
                 candidates.append(('git-bash', path, ['--login', '-i']))
 
-    # 3. cmd.exe - always present on Windows.
+    # 3. Git Bash Start Menu shortcut used by many Windows Git-for-Windows installs.
+    start_menu_git_bash = r'C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Git\Git Bash.lnk'
+    if os.path.isfile(start_menu_git_bash):
+        candidates.append(('git-bash-start-menu', start_menu_git_bash, []))
+
+    # 4. cmd.exe - always present on Windows.
     cmd = os.environ.get('ComSpec') or shutil.which('cmd')
     if cmd:
         candidates.append(('cmd', cmd, ['/K', f'cd /d "{workdir}"']))

@@ -1257,7 +1257,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ctrl + ` : Launch Terminal
     if (isCtrl && (e.key === '`' || e.code === 'Backquote')) {
       e.preventDefault();
-      fetch('/open-terminal', { method: 'POST' })
+      const terminalTarget = currentFilePath ||
+        (selectedTargetDir && selectedTargetDir !== '.' && !selectedTargetDir.includes('Selected Folder') ? selectedTargetDir : null) ||
+        (currentRootDir && currentRootDir !== '.' && currentRootDir !== 'Selected Folder' && !currentRootDir.includes('Selected Folder') ? currentRootDir : null) ||
+        'C:\\';
+      fetch('/open-terminal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: terminalTarget })
+      })
         .then(res => res.json())
         .then(data => {
           if (data.status !== 'success') alert(`Terminal Error: ${data.message}`);
