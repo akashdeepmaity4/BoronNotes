@@ -12,17 +12,11 @@ Please take a moment to review this document before you get started.
 If you find a bug, please check the [Issues page](link-to-issues) first to see if it has already been reported. If it hasn't, please open a new issue and include:
 
 *   **A clear summary** of the problem in the title.
-*   **Step-by-step instructions** to reproduce the issue.
+*   **Step-by-step instructions** to **reproduce** the issue.
 *   **Expected vs. actual behavior**.
 *   **Environment details** (e.g., OS, browser version, runtime version).
 *   **Screenshots or code snippets** if applicable.
 
-## 💡 How to Suggest a Feature
-
-Just jot it here...
-1. expand file support
-1. 
-1. 
 
 ## 💻 Local Development Setup
 

@@ -81,6 +81,14 @@ app = Flask(__name__,
             template_folder=resource_path('templates'),
             static_folder=resource_path('static'))
 
+@app.route('/favicon.svg')
+def favicon_svg():
+    return send_file(resource_path('favicon.svg'), mimetype='image/svg+xml')
+
+@app.route('/favicon.ico')
+def favicon_ico():
+    return send_file(resource_path('favicon.ico'), mimetype='image/x-icon')
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_FILE = os.path.join(PROJECT_ROOT, 'config.json')
 

@@ -5,7 +5,7 @@ import webview
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from app.app import app
+    from app.app import app, resource_path
 
     print("Successfully imported app and DesktopApi from app.app")
 except ImportError as e:
@@ -21,4 +21,4 @@ if __name__ == "__main__":
         height=800,
         resizable=True,
     )
-    webview.start()
+    webview.start(icon=resource_path('favicon.ico'))
