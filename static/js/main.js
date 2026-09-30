@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Single entry point for opening a file, so the menu item and Ctrl+O can
   // never drift apart again.
-  function promptOpenFile() {
+  async function promptOpenFile() {
     const picker = activeFilePicker || nativeFilePicker || filePicker;
     if (!picker) {
       alert('File open is unavailable in this environment.');
@@ -98,6 +98,32 @@ document.addEventListener('DOMContentLoaded', () => {
     discardEditorState();
     setEditable(true);
     updateLineNumbers();
+
+    // Prefer a writable file handle when the host supports the File System
+    // Access API. A regular <input type="file"> only provides a read-only
+    // File, so saving that selection cannot update the original disk file.
+    if (window.showOpenFilePicker) {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          multiple: false,
+          types: [{
+            description: 'Supported files',
+            accept: { 'text/plain': ['.txt', '.md', '.markdown', '.csv', '.tsv', '.json', '.html', '.htm', '.png', '.jpg', '.jpeg', '.pdf', '.doc', '.docx', '.gdoc'] }
+          }]
+        });
+        const file = await handle.getFile();
+        if (!isSupportedName(file.name)) {
+          alert(UNSUPPORTED_MSG);
+          return;
+        }
+        openPickedFile(file, handle);
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        console.warn('File System Access open failed; using file input:', err);
+      }
+    }
+
     picker.value = '';   // allow re-picking the same file after a failed open
     picker.click();
   }
@@ -224,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     if (kind === 'viewOnly') {
-      showDocument(name, src, ext);
+      showDocument(name, src, ext, content);
       return;
     }
 
@@ -250,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Load a File object picked from disk (File API), enforcing the allowlist.
-  function openPickedFile(file) {
+  function openPickedFile(file, handle = null) {
     const name = file.name;
     if (!isSupportedName(name)) {
       alert(UNSUPPORTED_MSG);
@@ -264,10 +290,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const ext = getExtension(name);
     const kind = classifyExtension(ext);
     setActiveDocument(
-      file.path
+      handle ? null : (file.path
         ? normalizePath(file.path)
-        : normalizePath(`${currentRootDir || '.'}/${name}`),
-      null,
+        : normalizePath(`${currentRootDir || '.'}/${name}`)),
+      handle,
       name
     );
 
@@ -277,7 +303,26 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.onload = (event) => applyClassification(name, event.target.result, ext);
       reader.readAsDataURL(file);
     } else if (kind === 'viewOnly') {
-      // Documents are view-only; PDFs stream read-only, others offer a link.
+      // DOCX is decoded locally on the server and rendered as text, while PDFs
+      // stay as read-only streams and everything else falls back to a link.
+      if (ext === 'docx') {
+        const formData = new FormData();
+        formData.append('file', file);
+        fetch('/docx-preview', {
+          method: 'POST',
+          body: formData
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === 'success') {
+              applyClassification(name, null, ext, data.content || '');
+            } else {
+              applyClassification(name, URL.createObjectURL(file), ext, '');
+            }
+          })
+          .catch(() => applyClassification(name, URL.createObjectURL(file), ext, ''));
+        return;
+      }
       applyClassification(name, URL.createObjectURL(file), ext);
     } else {
       reader.onload = (event) => {
@@ -322,19 +367,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Render a document (pdf/docx/gdoc) strictly for viewing.
-  function showDocument(name, src, ext) {
+  function showDocument(name, src, ext, content) {
     hideAllViewers();
     setEditable(false);
     if (textCanvas) textCanvas.classList.add('hidden');
     if (lineNumbersContainer) lineNumbersContainer.classList.add('hidden');
 
-    const inlineCapable = ['pdf', 'txt'].includes(ext);
+    const inlineCapable = ['pdf', 'txt', 'docx'].includes(ext);
     if (docFrame) {
-      docFrame.src = inlineCapable ? src : 'about:blank';
+      if (ext === 'docx' && content) {
+        const safeText = String(content)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        docFrame.srcdoc = `<!doctype html><html><body style="margin:0; background:#fff; font-family:system-ui, sans-serif;"><pre style="margin:0; padding:1rem; white-space:pre-wrap; line-height:1.5;">${safeText}</pre></body></html>`;
+      } else if (ext === 'docx' && src) {
+        docFrame.src = src;
+      } else {
+        docFrame.src = inlineCapable ? src : 'about:blank';
+      }
       docFrame.classList.toggle('hidden', !inlineCapable);
     }
     if (docFallback) docFallback.hidden = inlineCapable;
-    if (docDownloadLink) docDownloadLink.href = src;
+    if (docDownloadLink) docDownloadLink.href = src || '#';
     if (docViewer) docViewer.classList.remove('hidden');
   }
 
@@ -946,7 +1001,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const previousHandle = fileHandle;
 
     // Option A: pywebview Native Dialog
-    if (window.pywebview && window.pywebview.api.save_file_dialog) {
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.save_file_dialog) {
       targetPath = await window.pywebview.api.save_file_dialog();
       if (!targetPath) return;
       targetPath = normalizePath(targetPath);
@@ -1122,6 +1177,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // new file or folder dumps the previous file entirely instead of layering on
   // top of it.
   function discardEditorState() {
+    if (autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout);
+      autoSaveTimeout = null;
+    }
     setActiveDocument(null, null, 'No file open');
     currentFileExt = 'md';
     if (textCanvas) textCanvas.replaceChildren();
@@ -1337,7 +1396,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Execution Icon Handler ---
   const toolIcons = document.querySelectorAll('.tool-icon');
   toolIcons.forEach(btn => {
-    if (btn.textContent.includes('▶')) {
+    const actionName = (btn.getAttribute('data-action') || btn.getAttribute('aria-label') || btn.title || btn.textContent || '').toLowerCase();
+    if (actionName.includes('run') || actionName.includes('execute')) {
       btn.addEventListener('click', () => {
         if (!currentFilePath) {
           alert('No saved disk file active to run.');
@@ -1354,7 +1414,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.status === 'error') {
               alert(`Execution Error: ${data.message}`);
             } else {
-              alert(data.stdout || data.stderr || 'Execution completed with no output.');
+              const output = data.stdout || data.stderr || 'Execution completed with no output.';
+              alert(output);
             }
           })
           .catch(err => console.error('Error running script:', err));
@@ -1568,14 +1629,54 @@ document.addEventListener('DOMContentLoaded', () => {
     actionNewFolder.addEventListener('click', createNewFolderPrompt);
   }
 
+  const FILE_TYPE_ICONS = {
+    'default': 'file-generic.svg',
+    'js': 'file-js.svg',
+    'jsx': 'file-js.svg',
+    'ts': 'file-ts.svg',
+    'tsx': 'file-ts.svg',
+    'py': 'file-python.svg',
+    'pyw': 'file-python.svg',
+    'json': 'file-json.svg',
+    'html': 'file-html.svg',
+    'htm': 'file-html.svg',
+    'css': 'file-css.svg',
+    'scss': 'file-css.svg',
+    'sass': 'file-css.svg',
+    'md': 'file-markdown.svg',
+    'markdown': 'file-markdown.svg',
+    'yaml': 'file-yaml.svg',
+    'yml': 'file-yaml.svg',
+    'txt': 'file-text.svg',
+    'csv': 'file-text.svg',
+    'tsv': 'file-text.svg',
+    'xml': 'file-xml.svg',
+    'svg': 'file-xml.svg'
+  };
+
+  function getFileTypeKey(name) {
+    const extension = getExtension(name || '').toLowerCase();
+    return extension || 'default';
+  }
+
+  function getTreeFileIconMarkup(name, isFolder = false) {
+    if (isFolder) {
+      return '<span class="file-type-icon-wrap file-type-icon-folder"><img class="file-type-icon" src="/static/icons/folder.svg" alt="Folder icon"></span>';
+    }
+
+    const fileKey = getFileTypeKey(name);
+    const iconName = FILE_TYPE_ICONS[fileKey] || FILE_TYPE_ICONS.default;
+    return `<span class="file-type-icon-wrap"><img class="file-type-icon" src="/static/icons/${iconName}" alt="${fileKey} file icon"></span>`;
+  }
+
   function renderNativeTreeUI(rootDirName, treeData) {
     if (!treeContainer) return;
     treeContainer.replaceChildren();
 
     const rootHeader = document.createElement('button');
-    rootHeader.className = 'tree-folder';
-    rootHeader.style.cssText = 'display:block; width:100%; text-align:left; background:none; border:none; cursor:pointer; color:inherit; padding:4px 12px; font-weight:bold;';
-    rootHeader.textContent = `^ ${rootDirName}`;
+    rootHeader.className = 'tree-folder root-tree-folder';
+    rootHeader.style.cssText = 'display:block; width:100%; text-align:left; background:none; border:none; cursor:pointer; color:inherit;';
+    rootHeader.innerHTML = `${getTreeFileIconMarkup(rootDirName, true)}<span class="tree-label">${rootDirName}</span>`;
 
     treeContainer.appendChild(rootHeader);
     const treeList = createNativeTreeNodes(treeData);
@@ -1597,8 +1698,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (node.__type__ === 'file') {
         const fileBtn = document.createElement('button');
         fileBtn.className = 'tree-file';
-        fileBtn.style.cssText = 'display:block; width:100%; text-align:left; background:none; border:none; cursor:pointer; color:inherit; padding:4px 12px 4px 28px;';
-        fileBtn.textContent = `📄 ${key}`;
+        fileBtn.style.cssText = 'display:block; width:100%; text-align:left; background:none; border:none; cursor:pointer; color:inherit;';
+        fileBtn.innerHTML = `${getTreeFileIconMarkup(key)}<span class="tree-label">${key}</span>`;
 
         fileBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -1634,8 +1735,8 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (node.__type__ === 'dir') {
         const folderBtn = document.createElement('button');
         folderBtn.className = 'tree-folder';
-        folderBtn.style.cssText = 'display:block; width:100%; text-align:left; background:none; border:none; cursor:pointer; color:inherit; padding:4px 12px; font-weight:600;';
-        folderBtn.textContent = `^ ${key}`;
+        folderBtn.style.cssText = 'display:block; width:100%; text-align:left; background:none; border:none; cursor:pointer; color:inherit;';
+        folderBtn.innerHTML = `${getTreeFileIconMarkup(key, true)}<span class="tree-label">${key}</span>`;
 
         const childGroup = createNativeTreeNodes(node.children);
         childGroup.style.display = 'block';
@@ -1648,7 +1749,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           const isHidden = childGroup.style.display === 'none';
           childGroup.style.display = isHidden ? 'block' : 'none';
-          folderBtn.textContent = `${isHidden ? '^' : 'v'} ${key}`;
+          folderBtn.classList.toggle('collapsed-folder', !isHidden);
         });
 
         container.appendChild(folderBtn);

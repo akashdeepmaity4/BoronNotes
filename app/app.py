@@ -5,11 +5,13 @@ import json
 import html
 import base64
 import shutil
+import zipfile
 import subprocess
 import mimetypes
+import xml.etree.ElementTree as ET
 from flask import render_template as r
 from werkzeug.utils import secure_filename
-from flask import Flask, request, jsonify, redirect, url_for, send_file
+from flask import Flask, request, jsonify, redirect, url_for, send_file, Response
 '''
 KEEP DEBUG FALSE!
 '''
@@ -92,14 +94,42 @@ def favicon_ico():
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_FILE = os.path.join(PROJECT_ROOT, 'config.json')
 
+
+def get_default_storage_path():
+    return os.path.join(PROJECT_ROOT, 'storage')
+
+
+def sanitize_storage_path(candidate_path):
+    default_storage_path = get_default_storage_path()
+    if not candidate_path:
+        return default_storage_path
+
+    normalized = os.path.abspath(os.path.normpath(candidate_path))
+    if normalized in (PROJECT_ROOT, os.path.dirname(PROJECT_ROOT)):
+        return default_storage_path
+
+    if not os.path.isdir(normalized):
+        os.makedirs(normalized, exist_ok=True)
+    return normalized
+
+
 def load_config():
+    default = {"storage_path": get_default_storage_path()}
     if not os.path.exists(CONFIG_FILE):
-        default = {"storage_path": os.path.join(PROJECT_ROOT, 'storage')}
-        with open(CONFIG_FILE, 'w') as f:
+        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(default, f, indent=2)
         return default
-    with open(CONFIG_FILE, 'r') as f:
-        return json.load(f)
+
+    try:
+        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            config_data = json.load(f) or {}
+    except (OSError, ValueError):
+        config_data = {}
+
+    config_data['storage_path'] = sanitize_storage_path(config_data.get('storage_path'))
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(config_data, f, indent=2)
+    return config_data
 
 def save_config(config_data):
     with open(CONFIG_FILE, 'w') as f:
@@ -163,6 +193,37 @@ def get_preview(content, max_chars=140):
     if len(text) > max_chars:
         text = text[:max_chars].rsplit(' ', 1)[0] + '…'
     return text or "(empty note)"
+
+
+def extract_docx_text(docx_path):
+    """Return a plain-text approximation of a DOCX file using the stdlib only."""
+    if not docx_path or not os.path.isfile(docx_path):
+        return ''
+
+    try:
+        with zipfile.ZipFile(docx_path, 'r') as archive:
+            if 'word/document.xml' not in archive.namelist():
+                return ''
+            root = ET.fromstring(archive.read('word/document.xml'))
+    except (OSError, zipfile.BadZipFile, ET.ParseError):
+        return ''
+
+    ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+    paragraphs = []
+    for paragraph in root.findall('.//w:p', ns):
+        bits = []
+        for node in paragraph.iter():
+            tag = node.tag.rsplit('}', 1)[-1]
+            if tag == 't':
+                bits.append(node.text or '')
+            elif tag in {'br', 'cr'}:
+                bits.append('\n')
+            elif tag == 'tab':
+                bits.append('\t')
+        text = ''.join(bits).strip()
+        if text:
+            paragraphs.append(text)
+    return '\n'.join(paragraphs)
 
 #routing
 @app.route('/')
@@ -279,9 +340,13 @@ def file_content():
         })
 
     if kind == 'view_only':
+        content = ''
+        if get_ext(filename) == 'docx':
+            content = extract_docx_text(abs_path)
         return jsonify({
             'status': 'success', 'kind': 'view_only', 'name': name,
             'editable': False,
+            'content': content,
             'src': url_for('raw_file', filepath=rel_path),
         })
 
@@ -293,6 +358,32 @@ def file_content():
         'status': 'success', 'kind': kind, 'name': name,
         'editable': True, 'content': text, 'extension': get_ext(filename),
     })
+
+@app.route('/docx-preview', methods=['POST'])
+def docx_preview():
+    uploaded = request.files.get('file')
+    if uploaded is None or uploaded.filename == '':
+        return jsonify({'status': 'error', 'message': 'No DOCX file uploaded'}), 400
+
+    ext = get_ext(uploaded.filename)
+    if ext != 'docx':
+        return jsonify({'status': 'error', 'message': 'Only .docx files can be previewed here'}), 400
+
+    temp_path = None
+    try:
+        temp_path = os.path.join(STORAGE_PATH, f'.docx-preview-{os.getpid()}-{abs(hash(uploaded.filename))}.docx')
+        uploaded.save(temp_path)
+        text = extract_docx_text(temp_path)
+        return jsonify({'status': 'success', 'kind': 'view_only', 'content': text})
+    except Exception as exc:
+        return jsonify({'status': 'error', 'message': f'Could not preview DOCX: {exc}'}), 500
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+
 
 @app.route('/file-raw')
 def raw_file():
@@ -307,6 +398,15 @@ def raw_file():
     if os.path.commonpath([abs_path, storage]) != storage \
             or not os.path.isfile(abs_path):
         return jsonify({'error': 'File not found'}), 404
+
+    if get_ext(abs_path) == 'docx':
+        content = extract_docx_text(abs_path)
+        safe_html = html.escape(content)
+        return Response(
+            f"<!doctype html><html><body style='margin:0; font-family:system-ui; background:#f7f7f7;'><pre style='white-space:pre-wrap; margin:0; padding:1rem; font-size:14px; line-height:1.5;'>{safe_html}</pre></body></html>",
+            mimetype='text/html'
+        )
+
     mimetype = mimetypes.guess_type(abs_path)[0] or 'application/octet-stream'
     return send_file(abs_path, mimetype=mimetype)
 
@@ -538,6 +638,61 @@ def resolve_terminal_workdir(requested_path=None):
     return os.path.abspath(os.sep)
 
 
+@app.route('/run-file', methods=['POST'])
+def run_file():
+    data = request.get_json(silent=True) or {}
+    rel_path = data.get('path') or data.get('filename') or ''
+    if not rel_path:
+        return jsonify({'status': 'error', 'message': 'No file path supplied'}), 400
+
+    abs_path = os.path.abspath(os.path.join(STORAGE_PATH, rel_path))
+    storage_root = os.path.abspath(STORAGE_PATH)
+    if os.path.commonpath([abs_path, storage_root]) != storage_root:
+        return jsonify({'status': 'error', 'message': 'Path escapes storage'}), 400
+    if not os.path.isfile(abs_path):
+        return jsonify({'status': 'error', 'message': 'File not found'}), 404
+
+    ext = get_ext(abs_path).lower()
+    command = None
+
+    try:
+        if ext == 'py':
+            command = [sys.executable, abs_path]
+        elif ext in {'sh', 'bash'}:
+            bash_path = shutil.which('bash') or 'bash'
+            command = [bash_path, abs_path]
+        elif ext in {'bat', 'cmd'}:
+            cmd_path = os.environ.get('ComSpec') or 'cmd.exe'
+            command = [cmd_path, '/c', abs_path]
+        elif ext == 'ps1':
+            powershell_path = shutil.which('powershell') or shutil.which('pwsh') or 'powershell'
+            command = [powershell_path, '-ExecutionPolicy', 'Bypass', '-File', abs_path]
+        elif ext == 'js':
+            node_path = shutil.which('node')
+            if not node_path:
+                return jsonify({'status': 'error', 'message': 'Node.js is not installed'}), 500
+            command = [node_path, abs_path]
+        else:
+            return jsonify({'status': 'error', 'message': f'.{ext or "unknown"} files cannot be executed here'}), 415
+
+        completed = subprocess.run(
+            command,
+            cwd=os.path.dirname(abs_path),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return jsonify({
+            'status': 'success',
+            'stdout': completed.stdout.strip(),
+            'stderr': completed.stderr.strip(),
+            'exit_code': completed.returncode,
+            'path': rel_path,
+        })
+    except OSError as exc:
+        return jsonify({'status': 'error', 'message': f'Failed to run file: {exc}'}), 500
+
+
 @app.route('/open-terminal', methods=['POST'])
 def open_terminal():
     # Preference order: bash on PATH -> Git Bash (default install paths)
@@ -617,16 +772,15 @@ def set_storage_path():
     if not new_path:
         return jsonify({'success': False, 'error': 'Path cannot be empty'}), 400
 
-    if not os.path.exists(new_path):
-        return jsonify({'success': False, 'error': f'Path "{new_path}" does not exist on server'}), 400
-    if not os.access(new_path, os.W_OK):
-        return jsonify({'success': False, 'error': f'Path "{new_path}" is not writable'}), 400
+    valid_path = sanitize_storage_path(new_path)
+    if not os.access(valid_path, os.W_OK):
+        return jsonify({'success': False, 'error': f'Path "{valid_path}" is not writable'}), 400
 
-    STORAGE_PATH = new_path
-    config['storage_path'] = new_path
+    STORAGE_PATH = valid_path
+    config['storage_path'] = valid_path
     save_config(config)
 
-    return jsonify({'success': True, 'path': new_path})
+    return jsonify({'success': True, 'path': valid_path})
 
 if __name__ == '__main__':
     app.run(debug=False)
