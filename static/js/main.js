@@ -454,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const html = [];
     let i = 0;
 
-    const listStack = [];   // open <ul>/<ol> tags
+    const listStack = [];
     const closeLists = () => {
       while (listStack.length) html.push(listStack.pop());
     };
