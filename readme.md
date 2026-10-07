@@ -2,9 +2,9 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Version](https://img.shields.io/badge/version-3.0.0-brightgreen)
-![ParentProduct](https://img.shields.io/badge/aBoronCodeProduct-darkblue)
+![ParentProduct](https://img.shields.io/badge/aBoronSuiteProduct-darkblue)
 
-Boron Notes is a stripped-down version of Boron Code. It is an ultra-lightweight standard text editor which allows the user to create and edit any text-based file. It is fully local, keeping your files 100% safe inside your own local storage. Boron Notes is also a Markdown note-taking application made to be a lite alternative to Obsidian.
+Boron Notes is the markdown-focused version of Boron Code. It is an ultra-lightweight standard text editor as well as a document and image viewer which allows the user to create and edit any text-based file or view any PDF or image-based file. It is fully local: keeping your files 100% safe inside your own local storage. Boron Notes is also a Markdown note-taking application made to be a lite alternative to Obsidian.
 
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=JavaScript&logoColor=blue)
@@ -41,22 +41,22 @@ Boron Notes is a stripped-down version of Boron Code. It is an ultra-lightweight
 | `Ctrl + O` | Open single file picker | Triggers file input picker |
 
 ## How to Use
-
-1. Download the codebase to a directory named 'BoronNotes'. This will act as the root directory.
-1. Open 'remakeexecutable.sh' and change line 2 to the location of BoronNotes root directory. 
-1. Run 'remakeexecutable.sh' via Bash to make a safe application.
+**Only for Windows 10 / 11**
+1. Go to the [Github Releases](https://github.com/akashdeepmaity4/BoronNotes/releases/new) page and download the latest binary or zip file from assets.
+2. Install the application 
 
 ### OR
-
+**For Windows 10 / 11 / Linux**
 1. Download the codebase to a directory named 'BoronNotes'. This will act as the root directory.
 1. Run 'launcher.py' via python in Command Prompt/ Bourne Again Shell (Bash).
 1. This opens a native webapp.
 
 ### OR
-
+**for windows 10 / 11, Linux, Chrome OS**
 1. Download the codebase to a directory named 'BoronNotes'. This will act as the root directory.
 1. Run 'app/app.py' via python.
 1. Navigate to http://localhost:5000 in your browser.
+   > Some functionality may not work depending on your browser
 
 
 
