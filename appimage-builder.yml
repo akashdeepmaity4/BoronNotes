@@ -1,0 +1,35 @@
+version: 1
+script:
+  # Copy the PyInstaller outputs into the AppDir layout
+  - rm -rf AppDir || true
+  - mkdir -p AppDir/usr/bin
+  - cp -r dist/myapp/* AppDir/usr/bin/
+
+AppDir:
+  path: ./AppDir
+  app_info:
+    id: com.example.flaskwebviewapp
+    name: My Flask App
+    version: 1.0.0
+    exec: usr/bin/myapp
+  apt:
+    arch: amd64
+    allow_unauthenticated: true
+    sources:
+      - sourceline: deb http://ubuntu.com jammy main universe
+    include:
+      # These packages ensure pywebview renders UI windows on Arch/Fedora/Debian
+      - libwebkit2gtk-4.0-37
+      - libgtk-3-0
+      - libgirepository-1.0-1
+      - libgl1
+  runtime:
+    env:
+      # Points Python inside the bundle to the packaged WebKit libraries
+      LD_LIBRARY_PATH: '$APPDIR/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH'
+
+AppImage:
+  update-information: 'none'
+  sign-key: 'None'
+  arch: x86_64
+

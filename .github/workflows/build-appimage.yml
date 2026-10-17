@@ -1,0 +1,57 @@
+name: Build Cross-Distro AppImage
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Build and WebKit Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgirepository1.0-dev libwebkit2gtk-4.0-dev patchelf gcc fusionicon
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build PyInstaller Bundle (Directory Mode)
+        run: |
+          # We build as a directory first so AppImage can ingest it safely
+          pyinstaller --onedir \
+            --name="myapp" \
+            --add-data="templates:templates" \
+            --add-data="static:static" \
+            app.py
+
+      - name: Setup AppImageBuilder
+        run: |
+          sudo wget https://github.com -O /usr/local/bin/appimage-builder
+          sudo chmod +x /usr/local/bin/appimage-builder
+
+      - name: Generate AppImage Configuration & Build
+        run: |
+          # This runs appimage-builder using a recipe file (see Step 2)
+          appimage-builder --recipe appimage-builder.yml
+
+      - name: Upload Single-File AppImage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cross-Distro-AppImage
+          path: "*.AppImage"
+
