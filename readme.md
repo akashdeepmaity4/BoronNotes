@@ -25,7 +25,6 @@ Boron Notes is the markdown-focused version of Boron Code. It is an ultra-lightw
 
 ## SHORTCUTS
 
-
 | Shortcut | Action | Implementation |
 | --- | --- | --- |
 | `Ctrl + N` | New file in root/target directory | Triggers sidebar buttons or fallback prompt |
