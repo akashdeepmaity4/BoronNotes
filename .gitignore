@@ -28,7 +28,8 @@ npm-debug.log*
 *.tmp
 .cache/
 *.pyc
-
+.venv/
+venv/
 *.dmg
 *.pkg
 *.app
