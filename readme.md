@@ -6,6 +6,9 @@ Boron Notes is the markdown-focused version of Boron Code. It is an ultra-lightw
 
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)  ![HTML5](https://img.shields.io/badge/html5-%23F06529.svg?style=for-the-badge&logo=html5&logoColor=white) ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=JavaScript&logoColor=blue) ![Git](https://img.shields.io/badge/git-%23F1502F.svg?style=for-the-badge&logo=git&logoColor=white) ![GitHub](https://img.shields.io/badge/github-%23121011.svg?style=for-the-badge&logo=github&logoColor=white)
 
+<video src="assets/mp4/BoronNotes.mp4" width="960" height="540" controls></video>
+
+> Demo video generated with Claude by Anthropic
 
 ## FEATURES
 
