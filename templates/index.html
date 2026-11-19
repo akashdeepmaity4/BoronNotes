@@ -98,15 +98,19 @@
     <div class="menu-dropdown-container">
       <button class="menu-item" id="view-menu-btn">View</button>
       <div id="view-dropdown" class="app-dropdown-menu hidden">
-        <div class="dropdown-item" data-action="toggle-theme">
-          <span id="theme-status-text">Switch to Dark Mode</span>
-        </div>
-
-        <div class="dropdown-divider"></div>
-
         <div class="dropdown-item" data-action="toggle-line-numbers">
           <span id="lines-status-text">Hide Line Numbers</span>
         </div>
+      </div>
+    </div>
+
+    <div class="menu-dropdown-container">
+      <button class="menu-item" id="theme-menu-btn" aria-haspopup="true" aria-expanded="false">Theme</button>
+      <div id="theme-dropdown" class="app-dropdown-menu hidden" role="menu" aria-labelledby="theme-menu-btn">
+        <div class="dropdown-item" data-theme="dark" role="menuitem">Dark</div>
+        <div class="dropdown-item" data-theme="light" role="menuitem">Light</div>
+        <div class="dropdown-item" data-theme="nova" role="menuitem">Nova</div>
+        <div class="dropdown-item" data-theme="amoled" role="menuitem">AMOLED</div>
       </div>
     </div>
 
@@ -166,6 +170,7 @@
               <polyline points="7 3 7 8 15 8"></polyline>
             </svg>
           </button>
+          <!--- to do - add later 
           <button class="tool-icon brand-mark-btn" type="button" aria-label="Boron placeholder" title="Boron">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120" aria-hidden="true">
               <g font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="110">
@@ -175,6 +180,7 @@
               </g>
             </svg>
           </button>
+          -->
         </div>
       </div>
       <!--Main text box-->

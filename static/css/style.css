@@ -21,6 +21,32 @@
   color-scheme: dark;
 }
 
+body.theme-nova {
+  --bg-dark: #121212;
+  --bg-sidebar: #121212;
+  --bg-header: #1a1a1a;
+  --bg-hover: #292929;
+  --bg-active: #242424;
+  --border-color: #303030;
+  --text-main: #d0d0d0;
+  --text-muted: #929292;
+  --menu-bg: #1c1c1c;
+  --menu-border: #303030;
+}
+
+body.theme-amoled {
+  --bg-dark: #000;
+  --bg-sidebar: #080808;
+  --bg-header: #0a0a0a;
+  --bg-hover: #191919;
+  --bg-active: #121212;
+  --border-color: #202020;
+  --text-main: #ededed;
+  --text-muted: #a0a0a0;
+  --menu-bg: #0c0c0c;
+  --menu-border: #202020;
+}
+
 .root-light {
   --bg-dark: #ffffff;
   --bg-sidebar: #f3f3f3;

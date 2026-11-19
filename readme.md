@@ -12,7 +12,7 @@ Boron Notes is the markdown-focused version of Boron Code. It is an ultra-lightw
 
 ## FEATURES
 
-1. Native dark mode and Industry-standard IDE inspired look.
+1. Dark, light, Nova, and AMOLED color themes, available from the Theme menu.
 1. Minimal, snappy, reliable. Easy to get into even as a beginner.
 1. Fully locally ran. Your notes stay ON YOUR DEVICE
 

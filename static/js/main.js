@@ -146,12 +146,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const editDropdown = document.getElementById('edit-dropdown');
   const viewMenuBtn = document.getElementById('view-menu-btn');
   const viewDropdown = document.getElementById('view-dropdown');
+  const themeMenuBtn = document.getElementById('theme-menu-btn');
+  const themeDropdown = document.getElementById('theme-dropdown');
   const settingsMenuBtn = document.getElementById('settings-menu-btn');
   const settingsDropdown = document.getElementById('settings-dropdown');
   const helpMenuBtn = document.getElementById('help-menu-btn');
   const helpDropdown = document.getElementById('help-dropdown');
 
-  const themeStatusText = document.getElementById('theme-status-text');
   const linesStatusText = document.getElementById('lines-status-text');
 
   // Settings Sub-Panel Elements
@@ -178,8 +179,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Set Default View Menu Labels
-  if (themeStatusText) themeStatusText.textContent = 'Enable Light Mode';
   if (linesStatusText) linesStatusText.textContent = 'Show Line Numbers';
+
+  const themeClasses = ['theme-dark', 'theme-light', 'theme-nova', 'theme-amoled'];
+  function setTheme(theme) {
+    if (!['dark', 'light', 'nova', 'amoled'].includes(theme)) theme = 'dark';
+    document.body.classList.remove(...themeClasses, 'root-light', 'root-dark');
+    document.body.classList.add(`theme-${theme}`);
+    // Keep the existing light and dark CSS hooks working with the current stylesheet.
+    if (theme === 'light') document.body.classList.add('root-light');
+    else if (theme === 'dark') document.body.classList.add('root-dark');
+  }
+  setTheme('dark');
 
   // Sidebar Action Buttons
   // Bind by action metadata instead of hardcoded emoji text so the buttons can
@@ -661,6 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isHidden) {
         dropdown.classList.remove('hidden');
         if (container) container.classList.add('active');
+        btn.setAttribute('aria-expanded', 'true');
       }
     });
   }
@@ -668,6 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindMenuToggle(fileMenuBtn, fileDropdown);
   bindMenuToggle(editMenuBtn, editDropdown);
   bindMenuToggle(viewMenuBtn, viewDropdown);
+  bindMenuToggle(themeMenuBtn, themeDropdown);
   bindMenuToggle(settingsMenuBtn, settingsDropdown);
   bindMenuToggle(helpMenuBtn, helpDropdown);
 
@@ -676,6 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeAllDropdowns() {
     document.querySelectorAll('.app-dropdown-menu').forEach(menu => menu.classList.add('hidden'));
     document.querySelectorAll('.menu-dropdown-container').forEach(c => c.classList.remove('active'));
+    if (themeMenuBtn) themeMenuBtn.setAttribute('aria-expanded', 'false');
     if (fontSettingsPanel) fontSettingsPanel.classList.add('hidden');
   }
 
@@ -687,6 +701,15 @@ document.addEventListener('DOMContentLoaded', () => {
     fontSettingsToggle.addEventListener('click', (e) => {
       e.stopPropagation();
       fontSettingsPanel.classList.toggle('hidden');
+    });
+  }
+
+  if (themeDropdown) {
+    themeDropdown.addEventListener('click', (e) => {
+      const item = e.target.closest('[data-theme]');
+      if (!item) return;
+      setTheme(item.dataset.theme);
+      closeAllDropdowns();
     });
   }
 
@@ -718,6 +741,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!item || item.classList.contains('disabled')) return;
 
       const action = item.dataset.action;
+      if (!action) return;
       closeAllDropdowns();
 
       switch (action) {
@@ -827,12 +851,6 @@ document.addEventListener('DOMContentLoaded', () => {
       closeAllDropdowns();
 
       switch (action) {
-        case 'toggle-theme':
-          const isLight = document.body.classList.toggle('root-light');
-          if (themeStatusText) {
-            themeStatusText.textContent = isLight ? 'Enable Dark Mode' : 'Enable Light Mode';
-          }
-          break;
         case 'toggle-line-numbers':
           if (lineNumbersContainer) {
             const isVisible = lineNumbersContainer.classList.toggle('hidden');
