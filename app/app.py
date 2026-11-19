@@ -16,7 +16,6 @@ from flask import Flask, request, jsonify, redirect, url_for, send_file, Respons
 KEEP DEBUG FALSE!
 '''
 
-# ---------------------------------------------------------------------------
 # Supported file types (strict allowlist)
 #
 #   PLAIN        -> treated as raw plain text (no reformatting).
